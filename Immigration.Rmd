@@ -96,30 +96,30 @@ ggplot(us_and_som, mapping = aes(x = Year, y = toget, fill = som_or_nah)) +
 ```
 
 
-### Burma
+### Myanmar
 
 ```{r}
-only_burm <- gdp %>%
-  select(Somalia, Year, year_group) %>%
-  mutate(som_or_nah = "Somalia",
-         toget = Somalia) %>%
-  select(toget, Year, year_group, som_or_nah)
+only_myan <- gdp %>%
+  select(Myanmar, Year, year_group) %>%
+  mutate(myan_or_nah = "Myanmar",
+         toget = Myanmar) %>%
+  select(toget, Year, year_group, myan_or_nah)
 
-only_us_som <- gdp %>%
+only_us_myan <- gdp %>%
   select(United.States, Year, year_group) %>%
-  mutate(som_or_nah = "United States",
+  mutate(myan_or_nah = "United States",
          toget = United.States) %>%
-  select(toget, Year, year_group, som_or_nah)
+  select(toget, Year, year_group, myan_or_nah)
 
-us_and_som <- rbind(only_us_som, only_som)
+us_and_myan <- rbind(only_us_myan, only_myan)
 ```
 
 ```{r}
-ggplot(us_and_som, mapping = aes(x = Year, y = toget, fill = som_or_nah)) +
+ggplot(us_and_myan, mapping = aes(x = Year, y = toget, fill = myan_or_nah)) +
   geom_bar(stat = "identity", position = position_dodge()) +
   theme_minimal() +
   labs(title = "Understanding the Difference in GDP Per Capita",
-       subtitle = "Between Somalia and the United States",
+       subtitle = "Between Myanmar and the United States",
        x = "Years 1960 - 2017",
        y = "GDP (per capita)",
        fill = "Country")
@@ -127,10 +127,61 @@ ggplot(us_and_som, mapping = aes(x = Year, y = toget, fill = som_or_nah)) +
 
 ### Iraq
 
+```{r}
+only_iraq <- gdp %>%
+  select(Iraq, Year, year_group) %>%
+  mutate(iraq_or_nah = "Iraq",
+         toget = Iraq) %>%
+  select(toget, Year, year_group, iraq_or_nah)
+
+only_us_iraq <- gdp %>%
+  select(United.States, Year, year_group) %>%
+  mutate(iraq_or_nah = "United States",
+         toget = United.States) %>%
+  select(toget, Year, year_group, iraq_or_nah)
+
+us_and_iraq <- rbind(only_us_iraq, only_iraq)
+```
+
+```{r}
+ggplot(us_and_iraq, mapping = aes(x = Year, y = toget, fill = iraq_or_nah)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme_minimal() +
+  labs(title = "Understanding the Difference in GDP Per Capita",
+       subtitle = "Between Iraq and the United States",
+       x = "Years 1960 - 2017",
+       y = "GDP (per capita)",
+       fill = "Country")
+```
 
 ### Iran
 
+```{r}
+only_iran <- gdp %>%
+  select(Iran..Islamic.Rep., Year, year_group) %>%
+  mutate(iran_or_nah = "Iran",
+         toget = Iran..Islamic.Rep.) %>%
+  select(toget, Year, year_group, iran_or_nah)
 
+only_us_iran <- gdp %>%
+  select(United.States, Year, year_group) %>%
+  mutate(iran_or_nah = "United States",
+         toget = United.States) %>%
+  select(toget, Year, year_group, iran_or_nah)
+
+us_and_iran <- rbind(only_us_iran, only_iran)
+```
+
+```{r}
+ggplot(us_and_iran, mapping = aes(x = Year, y = toget, fill = iran_or_nah)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  theme_minimal() +
+  labs(title = "Understanding the Difference in GDP Per Capita",
+       subtitle = "Between Iran and the United States",
+       x = "Years 1960 - 2017",
+       y = "GDP (per capita)",
+       fill = "Country")
+```
 
 
 
