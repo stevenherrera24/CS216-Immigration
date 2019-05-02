@@ -1,0 +1,301 @@
+---
+title: "hw 4"
+author: "Steven Herrera"
+date: "5/1/2019"
+output: html_document
+---
+## Load packages
+
+```{r load-packages, message=FALSE}
+library(tidyverse)
+library(infer)
+library(openintro)
+```
+
+## Set seed
+
+```{r set-seed}
+set.seed(20180401)
+```
+
+## Questions
+
+## Part 1: Simulations for hypothesis testing
+
+### Question 1. Describe the simulation process for testing for a single population standard deviation. Suppose the research question is asking whether the standard deviation is less than 3, and the observed sample standard deviation is 2.
+
+1. Take a bootstrap sample (a random sample of size 100, with replacement) from the original sample.
+2. Record this bootstrap sample's standard deviation.
+3. Repeat steps (1) and (2) process 15,000 times to build a bootstrap distribution of the sample standard deviation.
+4. Add 1 to each value in the bootstrap distribution to shift the distribution to be centered at 3.
+5. Calculate the p-value as the proportion of bootstrap samples that yield a sample standard deviation of 2 or lower.
+
+### Question 2. Describe the simulation process for testing for the difference between two population proportions. Suppose the sample proportion of successes for sample A is 0.3 and for sample B is 0.4.
+
+Assuming n_A and n_B are each 100:
+
+1. Write "success" on 70 index cards and "failure" on 130 index cards. 
+2. Shuffle these 200 cards and randomly split them into two decks of size 100. 
+3. Record the difference between the proportion of cards that say "success" in the two decks.
+4. Repeat steps (2) and (3) 15,000 times to build a null distribution of differences in sample proportions.
+5. Calculate the p-value as the proportion of permutation samples that yield a difference in sample proportion of -0.1 or lower or 0.1 or higher.
+
+### Question 3. Describe the simulation process for testing for a single population proportion. Suppose the research question is asking whether proportion of successes is majority, and also that the observed proportion of success is 0.6.
+
+1. Write "success" on 50 index cards and "failure" on 50 index cards.
+2. Shuffle these 100 cards and randomly sample, with replacement, a sample of 100 cards from this deck.
+3. Record the number of cards that say "success" in this sample.
+4. Repeat steps (2) and (3) 15,000 times to build a null distribution of proportion of successes.
+5. Calculate the p-value as the proportion of simulated samples that yield a sample proportion of 0.6 or higher.
+
+### Question 4. Describe the simulation process for testing for the difference between two population means. Suppose sample mean for sample A is 5 and for sample B is 3.
+
+Assuming n_A and n_B are each 100:
+
+1. Write the numerical data from sample A on 100 index cards and numerical data from sample B on another set of 100 index cards.
+2. Shuffle these 200 cards and randomly split them into two decks of size 100. 
+3. Record the difference between the means of cards in the two decks.
+4. Repeat steps (2) and (3) 15,000 times to build a null distribution of differences in sample means
+5. Calculate the p-value as the proportion of permutation samples that yield a difference in sample means of -2 or lower or 2 or higher.
+
+
+## Part 2: Simulations for hypothesis testing
+
+```{r}
+data(acs12)
+nrep <- 1000 
+```
+
+### Question 5. Do these data provide convincing evidence of a difference in median income of employed Americans who do and do not speak English at home?
+
+We can use a hypothesis test to answer this question.
+
+Let $median$ represent the median income of employed Americans. Then,
+
+$H_0: median_{English} = median_{other}$  
+$H_A: median_{English} \ne median_{other}$
+
+For this analysis we're focusing on employed Americans, so we can create a subset of the data for respondents who are employed.
+
+```{r acs-emp}
+acs_emp <- acs12 %>%
+  filter(employment == "employed")
+```
+
+Next, we calculate the observed sample statistic: $sampmedian_{English} = sampmedian_{other}$.
+
+```{r obs-diff-med-income-english}
+sampmed_diff <- acs_emp %>%
+  filter(!is.na(income) & !is.na(lang)) %>%
+  group_by(lang) %>%  
+  summarise(samp_med = median(income)) %>%
+  summarise(diff(samp_med))
+```
+
+Then, we generate the null distribution.
+
+```{r calc-null-dist-med-income-english}
+null_dist <- acs_emp %>%
+  filter(!is.na(income) & !is.na(lang)) %>%
+  specify(response = income, explanatory = lang) %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = nrep, type = "permute") %>%
+  calculate(stat = "diff in medians", order = c("english", "other"))
+```
+
+And visualize it.
+
+```{r viz-null-dist-med-income-english}
+ggplot(data = null_dist, aes(x = stat)) +
+  geom_histogram(binwidth = 1500) +
+  geom_vline(xintercept = sampmed_diff, color = "red") +
+  geom_vline(xintercept = -1 * sampmed_diff, color = "red") +
+  labs(title = "Null distribution of differences in medians",
+       subtitle = "sampmed_English - sampmed_other")
+```
+
+Based on the visualization of the null distribution, the p-value does not appear to be small. But we can directly calculate it as well
+
+```{r pval-med-income-english}
+null_dist %>%
+  filter(stat <= sampmed_diff) %>%
+  summarise(pvalue = 2 * (n() / nrep))
+```
+
+With a p-value larger than 0.05, we fail to reject the null hypothesis in favor of the alternative hypothesis. The data do not provide convincing evidence of a difference in median incomes of employed Americans who do and do not speak English at home.
+
+### Question 6. Construct a 95% confidence interval for the median travel time to work of Americans who are employed.
+
+We can use bootstrapping to answer this question.
+
+We start by generating the bootstrap distribution.
+
+```{r boot-commute-med}
+boot_dist <- acs12 %>%
+  filter(employment == "employed", !is.na(time_to_work)) %>%
+  specify(response = "time_to_work") %>%
+  generate(reps = nrep, type = "bootstrap") %>%
+  calculate(stat = "median")
+```
+
+And then visualize it.
+
+```{r viz-boot-commute-med}
+ggplot(data = boot_dist, aes(x = stat)) +
+  geom_histogram(binwidth = 0.5) 
+```
+
+It looks like all simulations resulted in the same sample median of 20. We can calculate the 95% confidence interval as follows.
+
+```{r calc-boot-commute-med}
+boot_dist %>%
+  summarise(
+    lower = quantile(stat, 0.025),
+    uppper = quantile(stat, 0.975)
+  )
+```
+
+Based on the results, we are 95% confident that the median travel to work time of employed Americans is 20. However, this is not a reliable confidence interval. There is little variability in the data, resulting in bootstrap samples with the same median, and hence a confidence interval with 0 width.
+
+### Question 7. Do these data provide convincing evidence of a difference in the proportions of Americans who are employed between those who are citizens and those who are not?
+
+We can use a hypothesis test to answer this question.
+
+Let $p$ represent proportion of employed Americans. Then,
+
+$H_0 = p_{citizen} = p_{non~citizen}$  
+$H_A = p_{citizen} \ne p_{non~citizen}$
+
+Since we're only interested in whether someone is employed or not, we should first create a new variable, `employment_recat`, that does not distinguish between people who are `"unemployed"` and `"not in labor force"`.
+
+```{r employment-recat}
+acs12 <- acs12 %>%
+  mutate(employment_recat = ifelse(employment != "employed", "not employed", "employed"))
+```
+
+Then, we calculate the observed sample statistic: $\hat{p}_{citizen} = \hat{p}_{non~citizen}$.
+
+```{r phat-diff}
+acs12 %>%
+  filter(!is.na(employment_recat), !is.na(citizen)) %>%
+  group_by(citizen) %>%
+  count(employment_recat) 
+```
+
+Next, we generate the null distribution.
+
+```{r null-emp-citizen}
+null_dist <- acs12 %>%
+  filter(!is.na(employment_recat), !is.na(citizen)) %>%
+  specify(response = employment_recat, explanatory = citizen, success = "employed") %>%
+  hypothesize(null = "independence") %>%
+  generate(reps = nrep, type = "permute") %>%
+  calculate(stat = "diff in props", order = c("yes", "no"))
+```
+
+And visualize it.
+
+```{r viz-null-emp-citizen}
+ggplot(data = null_dist, aes(x = stat)) +
+  geom_histogram(binwidth = 0.02) +
+  geom_vline(xintercept = phat_diff, color = "red") +
+  geom_vline(xintercept = -1 * phat_diff, color = "red") +
+  labs(title = "Null distribution of differences in proportions",
+       subtitle = "phat_citizen - phat_noncitizen")
+```
+
+Based on the visualization of the null distribution, the p-value does not appear to be small. But we can directly calculate it as well
+
+```{r pval-null-emp-citizen}
+null_dist %>%
+  filter(stat >= phat_diff) %>%
+  summarise(pvalue = 2 * (n()/ nrep))
+```
+
+With a p-value larger than 0.05, we fail to reject the null hypothesis in favor of the alternative hypothesis. The data do not provide convincing evidence of a difference in the proportions of Americans who are employed between those who are citizens and those who are not.
+
+### Question 8. Construct a 90% confidence interval for the difference in the proportions of Americans who are citizens between those who speak English at home and those who do not.
+
+We can use bootstrapping to answer this question.
+
+We start by generating the bootstrap distribution.
+
+```{r boot-citizen-lang}
+boot_dist <- acs12 %>%
+  filter(!is.na(citizen), !is.na(lang)) %>%
+  specify(response = citizen, explanatory = lang, success = "yes") %>%
+  generate(reps = nrep, type = "bootstrap") %>%
+  calculate(stat = "diff in props", order = c("english", "other"))
+```
+
+And then visualize it.
+
+```{r viz-boot-citizen-lang}
+ggplot(data = boot_dist, aes(x = stat)) +
+  geom_histogram(binwidth = 0.01) +
+  labs(title = "Bootstrap distribution of differences in proportions",
+       subtitle = "phat_citizen - phat_noncitizen")
+```
+
+We can calculate the 95% confidence interval as follows.
+
+```{r calc-boot-citizen-lang}
+CI <- boot_dist %>%
+  summarise(
+    lower = quantile(stat, 0.05),
+    upper = quantile(stat, 0.95)
+  )
+```
+
+Based on the results, we are 90% confident that the proportion of citizens among those who speak English at home is approximately `r round(CI$lower*100,4)`% to `r round(CI$upper*100,4)`% higher than the proportion of citizens among those who speak another language at home.
+
+### Question 9. Construct a 95% confidence interval for the difference for the difference in median incomes of employed Americans born in the first half of the year vs. those born in the in the second half.
+
+We need to first create a variable that denotes whether a participant was born in the first or the second half of the year. Note that for this question we're focusing on employed Americans only, hence we can work with the `acs_emp` data frame we created earlier.
+
+```{r birth-half}
+acs_emp <- acs_emp %>%
+  mutate(birth_half = case_when(
+    birth_qrtr == "jan thru mar" ~ "first",
+    birth_qrtr == "apr thru jun" ~ "first",
+    birth_qrtr == "jul thru sep" ~ "second",
+    birth_qrtr == "oct thru dec" ~ "second"
+  ))
+```
+
+We can use bootstrapping to answer this question.
+
+We start by generating the bootstrap distribution.
+
+```{r boot-income-half}
+boot_dist <- acs_emp %>%
+  filter(!is.na(birth_half), !is.na(income)) %>%
+  specify(response = income, explanatory = birth_half) %>%
+  generate(reps = nrep, type = "bootstrap") %>%
+  calculate(stat = "diff in medians", order = c("first", "second"))
+```
+
+And then visualize it.
+
+```{r viz-boot-income-half}
+ggplot(data = boot_dist, aes(x = stat)) +
+  geom_histogram(binwidth = 1000) +
+  labs(title = "Bootstrap distribution of differences in medians",
+       subtitle = "sampmed_firsthalf - sampmed_secondhalf")
+```
+
+We can calculate the 95% confidence interval as follows.
+
+```{r calc-boot-income-half}
+boot_dist %>%
+  summarise(
+    lower = quantile(stat, 0.025),
+    uppper = quantile(stat, 0.975)
+  )
+```
+
+Based on the results, we are 95% confident that the median income of employed Americans who are born in the first half of the year is \$6,500 lower to \$6,200 higher than those who are born in the second half of the year.
+
+### Question 10. Pick your own: State a question you want to answer with these data and answer it using the appropriate inference method.
+
+Answers may vary.
