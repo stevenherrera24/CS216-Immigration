@@ -1,182 +1,209 @@
 ### Loading packages
 
     library(tidyverse)
+    library(infer)
+    library(openintro)
 
-    ## ── Attaching packages ─────────────────────────────────────────────────────────── tidyverse 1.2.1 ──
+Looking at the data
+===================
 
-    ## ✔ ggplot2 3.1.1       ✔ purrr   0.3.2  
-    ## ✔ tibble  2.1.1       ✔ dplyr   0.8.0.1
-    ## ✔ tidyr   0.8.3       ✔ stringr 1.4.0  
-    ## ✔ readr   1.3.1       ✔ forcats 0.4.0
+Originally, our data looked like this (showing only the first 10
+results):
 
-    ## ── Conflicts ────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
-    ## ✖ dplyr::filter() masks stats::filter()
-    ## ✖ dplyr::lag()    masks stats::lag()
+    refugee <- read.csv("refugee.csv")
+    refugee %>%
+      head(10)
 
-Using the GDP data
-------------------
+    ##    Year  Ceiling Admitted
+    ## 1  1980 231,700  207,116 
+    ## 2  1981 217,000  159,252 
+    ## 3  1982 140,000   98,096 
+    ## 4  1983  90,000   61,218 
+    ## 5  1984  72,000   70,393 
+    ## 6  1985  70,000   67,704 
+    ## 7  1986  67,000   62,146 
+    ## 8  1987  70,000   64,528 
+    ## 9  1988  87,500   76,483 
+    ## 10 1989 116,500  107,070
 
-Below, we will use GDP per capita data from the World Bank website:
+We had 39 observations, representing the years from 1980 to 2018. The
+variables in this dataset are `Year`, `Ceiling`, and `Admitted`.
 
-    gdp <- read.csv("gdp.csv")
+1.  **Year** (*numerical*) - represents the years from 1980-2018
 
-Here is the link for the information:
-<a href="https://data.worldbank.org/indicator/ny.gdp.pcap.cd" class="uri">https://data.worldbank.org/indicator/ny.gdp.pcap.cd</a>
+2.  **Ceiling** (*factor*) - represents the maximum amount of refugees
+    accepted in those years.
 
-    gdp <- gdp %>%
-      mutate(year_group = case_when(
-        Year >= 1960 & Year < 1970 ~ "1960s",
-        Year >= 1970 & Year < 1980 ~ "1970s",
-        Year >= 1980 & Year < 1990 ~ "1980s",
-        Year >= 1990 & Year < 2000 ~ "1990s",
-        Year >= 2000 & Year < 2010 ~ "2000s",
-        Year >= 2010 & Year < 2017 ~ "2010s",
-      )) 
+3.  **Admitted** (*factor*) - represents the actual amount of refugees
+    accepted in those years.
 
-### Mexico vs US
+In order to look at this data and make better use of the observations, I
+will turn the `Ceiling` and `Admitted` variables into numerical
+variables and remove the commas. Then, I will manipulate the data using
+the *mutate* and *filter* functions to double up on the observations and
+create a new variable called `Type` that, instead of having ceiling and
+admitted as variables, recognizes them as types with the numeric value
+(that would have gone under each respective variable) under the new
+variable `Toget`, or “together”. Thus, our new dataset looks like this
+(showing only the first 10 results):
 
-    only_mex <- gdp %>%
-      select(Mexico, Year, year_group) %>%
-      mutate(mex_or_nah = "Mexico",
-             toget = Mexico) %>%
-      select(toget, Year, year_group, mex_or_nah)
+    refugee <- refugee %>%
+      mutate(Ceiling = as.numeric(gsub(",", "", Ceiling)),
+             Admitted = as.numeric(gsub(",", "", Admitted)))
 
-    only_us <- gdp %>%
-      select(United.States, Year, year_group) %>%
-      mutate(mex_or_nah = "United States",
-             toget = United.States) %>%
-      select(toget, Year, year_group, mex_or_nah)
+    only1 <- refugee %>% 
+      mutate(Toget = Ceiling,
+             Type = "Ceiling") %>%
+      select(Year, Toget, Type)
 
-    us_and_mex <- rbind(only_us, only_mex)
+    only2 <- refugee %>%
+      mutate(Toget = Admitted,
+             Type = "Admitted") %>%
+      select(Year, Toget, Type)
 
-    ggplot(us_and_mex, mapping = aes(x = Year, y = toget, fill = mex_or_nah)) +
-      geom_bar(stat = "identity", position = position_dodge()) +
-      theme_minimal() +
-      labs(title = "Understanding the Difference in GDP Per Capita",
-           subtitle = "Between Mexico and the United States",
-           x = "Years 1960 - 2017",
-           y = "GDP (per capita)",
-           fill = "Country")
+    together <- rbind(only1, only2)
 
-![](Immigration_files/figure-markdown_strict/unnamed-chunk-5-1.png)
+    first_adm <- together %>%
+      filter(Type == "Admitted") %>%
+      head(5)
+    first_ceil <- together %>%
+      filter(Type == "Ceiling") %>%
+      head(5)
 
-### Somalia
+    showing_first <- rbind(first_ceil, first_adm)
+    showing_first
 
-    only_som <- gdp %>%
-      select(Somalia, Year, year_group) %>%
-      mutate(som_or_nah = "Somalia",
-             toget = Somalia) %>%
-      select(toget, Year, year_group, som_or_nah)
+    ##    Year  Toget     Type
+    ## 1  1980 231700  Ceiling
+    ## 2  1981 217000  Ceiling
+    ## 3  1982 140000  Ceiling
+    ## 4  1983  90000  Ceiling
+    ## 5  1984  72000  Ceiling
+    ## 6  1980 207116 Admitted
+    ## 7  1981 159252 Admitted
+    ## 8  1982  98096 Admitted
+    ## 9  1983  61218 Admitted
+    ## 10 1984  70393 Admitted
 
-    only_us_som <- gdp %>%
-      select(United.States, Year, year_group) %>%
-      mutate(som_or_nah = "United States",
-             toget = United.States) %>%
-      select(toget, Year, year_group, som_or_nah)
+Our new dataset `together` is now comprehensive and usable, in order to
+conduct analysis.
 
-    us_and_som <- rbind(only_us_som, only_som)
+Exploratory Data Analysis
+=========================
 
-    ggplot(us_and_som, mapping = aes(x = Year, y = toget, fill = som_or_nah)) +
-      geom_bar(stat = "identity", position = position_dodge()) +
-      theme_minimal() +
-      labs(title = "Understanding the Difference in GDP Per Capita",
-           subtitle = "Between Somalia and the United States",
-           x = "Years 1960 - 2017",
-           y = "GDP (per capita)",
-           fill = "Country")
+Below, is a graph showing the changes in Ceiling and Admitted over the
+course of all years:
 
-    ## Warning: Removed 53 rows containing missing values (geom_bar).
+    ggplot(data = together, mapping = aes(x = Year, y = Toget, color = Type)) +
+      geom_point() +
+      geom_line() +
+      theme_bw() +
+      labs(title = "Visualizing the differences between admitted and ceiling",
+           subtitle = "Over the course of 1980-2018",
+           x = "Year", y = "Number of refugees")
 
-![](Immigration_files/figure-markdown_strict/unnamed-chunk-7-1.png)
+![](Immigration_files/figure-markdown_strict/unnamed-chunk-3-1.png)
 
-### Myanmar
+There have been significant changes since the 1980s and throughout the
+entire time period.
 
-    only_myan <- gdp %>%
-      select(Myanmar, Year, year_group) %>%
-      mutate(myan_or_nah = "Myanmar",
-             toget = Myanmar) %>%
-      select(toget, Year, year_group, myan_or_nah)
+There have been some instances where the amount of refugees admitted
+went above the ceiling cap. Below, I showed which years those instances
+occurred:
 
-    only_us_myan <- gdp %>%
-      select(United.States, Year, year_group) %>%
-      mutate(myan_or_nah = "United States",
-             toget = United.States) %>%
-      select(toget, Year, year_group, myan_or_nah)
+    refugee %>%
+      mutate(difference = Ceiling - Admitted) %>%
+      filter(difference <= 0)
 
-    us_and_myan <- rbind(only_us_myan, only_myan)
+    ##   Year Ceiling Admitted difference
+    ## 1 1992  131000   132531      -1531
+    ## 2 2017   50000    53716      -3716
 
-    ggplot(us_and_myan, mapping = aes(x = Year, y = toget, fill = myan_or_nah)) +
-      geom_bar(stat = "identity", position = position_dodge()) +
-      theme_minimal() +
-      labs(title = "Understanding the Difference in GDP Per Capita",
-           subtitle = "Between Myanmar and the United States",
-           x = "Years 1960 - 2017",
-           y = "GDP (per capita)",
-           fill = "Country")
+What happened in 1992 and 2017?
 
-    ## Warning: Removed 40 rows containing missing values (geom_bar).
+1.  In 1992, according to the [Report of the United Nations High
+    Commissioner for
+    Refugees](https://www.unhcr.org/excom/unhcrannual/3ae68c860/report-united-nations-high-commissioner-refugees-1992.html),
+    events that occurred in the Persian Gulf, the Horn of Africa and
+    South-West Asia have posed unprecedented difficulties for people
+    living in those areas, causing skyrocketing numbers of refugee
+    applications for resettlement in the United States.
 
-![](Immigration_files/figure-markdown_strict/unnamed-chunk-9-1.png)
+2.  In 2017, according to this overview of [U.S. Refugee Law and
+    Policy](https://www.americanimmigrationcouncil.org/research/overview-us-refugee-law-and-policy),
+    current President Donald Trump signed an executive order that
+    suspended the entire U.S. refugee admissions program for 120 days,
+    which caused significant decreases in refugee applications.
+    Regardless, the cap set on refugees wasn’t strictly followed in 2018
+    since those admitted didn’t go above the cap that year.
 
-### Iraq
+In being able to understand the influence the US has when setting caps
+on how many people are allowed to enter the US as refugees, it would be
+interesting and important to see if there a statistically significant
+difference between the amount of refugees coming to the US and the cap
+that’s set on them. The reason why is because, although refugees have to
+send in an application from an overseas asylum officer and get it
+approved, exceptions can be made, often going over the cap set, which we
+saw it happen in 1992 and 2017. We’ll conduct a hypothesis test to look
+at this.
 
-    only_iraq <- gdp %>%
-      select(Iraq, Year, year_group) %>%
-      mutate(iraq_or_nah = "Iraq",
-             toget = Iraq) %>%
-      select(toget, Year, year_group, iraq_or_nah)
+Hypothesis Test: Is there a difference?
+=======================================
 
-    only_us_iraq <- gdp %>%
-      select(United.States, Year, year_group) %>%
-      mutate(iraq_or_nah = "United States",
-             toget = United.States) %>%
-      select(toget, Year, year_group, iraq_or_nah)
+### Do these data provide convincing evidence of a difference in refugees admitted for those that are type Ceiling and type Admitted during the years 1980s-2010s?
 
-    us_and_iraq <- rbind(only_us_iraq, only_iraq)
+Let *m**e**a**n* represent the mean number of people admitted. Then,
 
-    ggplot(us_and_iraq, mapping = aes(x = Year, y = toget, fill = iraq_or_nah)) +
-      geom_bar(stat = "identity", position = position_dodge()) +
-      theme_minimal() +
-      labs(title = "Understanding the Difference in GDP Per Capita",
-           subtitle = "Between Iraq and the United States",
-           x = "Years 1960 - 2017",
-           y = "GDP (per capita)",
-           fill = "Country")
+*H*<sub>0</sub> : *m**e**a**n*<sub>*C**e**i**l**i**n**g*</sub> = *m**e**a**n*<sub>*A**d**m**i**t**t**e**d*</sub>  
+*H*<sub>*A*</sub> : *m**e**a**n*<sub>*C**e**i**l**i**n**g*</sub> ≠ *m**e**a**n*<sub>*A**d**m**i**t**t**e**d*</sub>
 
-    ## Warning: Removed 16 rows containing missing values (geom_bar).
+Below, I calculated the observed sample difference:
 
-![](Immigration_files/figure-markdown_strict/unnamed-chunk-11-1.png)
+    diff <- together %>%
+      group_by(Type) %>%
+      summarise(mean = mean(Toget))  %>%
+      summarise(diff(mean)) %>%
+      pull()
 
-### Iran
+This value ended up being 1.459448710^{4}. Then, we create a null
+distribution using 1000 permutations, in which we calculate the mean
+difference and record that on this distribution.
 
-    only_iran <- gdp %>%
-      select(Iran..Islamic.Rep., Year, year_group) %>%
-      mutate(iran_or_nah = "Iran",
-             toget = Iran..Islamic.Rep.) %>%
-      select(toget, Year, year_group, iran_or_nah)
+    null_dist <- together %>%
+      specify(response = Toget, explanatory = Type) %>%
+      hypothesize(null = "independence") %>%
+      generate(reps = 1000, type = "permute") %>%
+      calculate(stat = "diff in means", order = c("Ceiling", "Admitted"))
 
-    only_us_iran <- gdp %>%
-      select(United.States, Year, year_group) %>%
-      mutate(iran_or_nah = "United States",
-             toget = United.States) %>%
-      select(toget, Year, year_group, iran_or_nah)
+Here, we have it visualized:
 
-    us_and_iran <- rbind(only_us_iran, only_iran)
+    ggplot(data = null_dist, aes(x = stat)) +
+      geom_histogram() +
+      geom_vline(xintercept = 14594.49, color = "red") +
+      geom_vline(xintercept = -1 * 14594.49, color = "red") +
+      labs(title = "Null distribution of differences in means",
+           subtitle = "sampmed_Ceiling - sampmed_Admitted")
 
-    ggplot(us_and_iran, mapping = aes(x = Year, y = toget, fill = iran_or_nah)) +
-      geom_bar(stat = "identity", position = position_dodge()) +
-      theme_minimal() +
-      labs(title = "Understanding the Difference in GDP Per Capita",
-           subtitle = "Between Iran and the United States",
-           x = "Years 1960 - 2017",
-           y = "GDP (per capita)",
-           fill = "Country")
+    ## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
 
-    ## Warning: Removed 2 rows containing missing values (geom_bar).
+![](Immigration_files/figure-markdown_strict/unnamed-chunk-6-1.png)
 
-![](Immigration_files/figure-markdown_strict/unnamed-chunk-13-1.png)
+To determine the p-value, we calculate the proportion of permutation
+samples that yield a difference in sample means of -1.459448710^{4} or
+lower or 1.459448710^{4} or higher.
 
-Using the Mexico data:
-----------------------
+    null_dist %>%
+      filter(stat >= diff | stat <= -diff)  %>%
+      summarise(pvalue = (n() / 1000))
 
-    mexico <- read.csv("mexico_data.csv")
+    ## # A tibble: 1 x 1
+    ##   pvalue
+    ##    <dbl>
+    ## 1   0.07
+
+This means that there isn’t a statistically significant difference
+between those admitted and the cap that is set for all years. This is a
+good thing since we’d expect that the cap set does a good job at
+predicting how many people come to the U.S., but the implications behind
+such analysis also suggest that this might be obvious since the U.S.
+makes decisions based on policies and executive orders.
